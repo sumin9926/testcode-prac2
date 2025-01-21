@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,12 @@ class MenuServiceTest {
 	// 1-2: 테스트 하려는 실제 객체에 의존성 주입해주기
 	@InjectMocks // 만들어둔 @Mock들을 주입할 때 사용.
 	private MenuService menuService; //실제 객체
+
+	// 각 @Test 메서드가 실행되기 전 무조건 한 번 실행되는 메서드
+	@BeforeEach
+	void temp() {
+
+	}
 
 	// 2-1: test code 작성. public은 꼭 있어야한다.
 	@Test
