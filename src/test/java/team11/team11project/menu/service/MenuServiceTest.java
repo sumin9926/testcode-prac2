@@ -20,6 +20,7 @@ import team11.team11project.common.entity.Store;
 import team11.team11project.common.exception.NotFoundException;
 import team11.team11project.menu.model.response.MenuResponse;
 import team11.team11project.menu.repository.MenuRepository;
+import team11.team11project.mock.MockData;
 import team11.team11project.store.repository.StoreRepository;
 
 /**
@@ -42,7 +43,7 @@ class MenuServiceTest {
 	// 2-1: test code 작성. public은 꼭 있어야한다.
 	@Test
 	@DisplayName("메뉴 생성 메서드 - 성공 케이스")
-	public void createMenu_success(){ // 메서드명은 '실제 메서드명_성공/실패여부' 이런식으로도 사용한다.
+	public void createMenu_success() { // 메서드명은 '실제 메서드명_성공/실패여부' 이런식으로도 사용한다.
 
 		// 2-2: 상황 만들기
 		// give
@@ -52,14 +53,18 @@ class MenuServiceTest {
 		String name = "망곰이";
 		Integer price = 1000;
 		String description = "JMT";
-		Store store = mock(Store.class); // Store 객체 Mock으로 만들기
-		Member member = mock(Member.class);
+		/*Store store = mock(Store.class); // Store 객체 Mock으로 만들기*/
+		/*Member member = mock(Member.class);*/
+
+		// 공유 객체 활용
+		Store store = MockData.createStore();
+		Member member = MockData.createMember();
 
 		// Mock 상태인 storeRepository가 실제로 동작하는 것이 아니기 때문에 로직상 어떤 값을 받아와야하는 경우 상황 설정을 해줘야한다.
 		// storeRepository에서 findById를 하면 Optional 타입의 Store 객체를 반환하겠다.
 		when(storeRepository.findById(anyLong()/*혹은 storeId*/)).thenReturn(Optional.of(store)); // 실제 MenuService의 25번 줄에 대한 상황 정의
-		when(store.getOwner()).thenReturn(member); // 실제 MenuService의 28번 줄에 대한 상황 정의
-		when(member.getId()).thenReturn(ownerId); // Member도 결국 가짜 객체이기 때문에, getId()를 했을 때 어떤 값을 반환할 것인지 설정해줘야한다.
+		/*when(store.getOwner()).thenReturn(member); // 실제 MenuService의 28번 줄에 대한 상황 정의
+		when(member.getId()).thenReturn(ownerId); // Member도 결국 가짜 객체이기 때문에, getId()를 했을 때 어떤 값을 반환할 것인지 설정해줘야한다.*/
 
 		Menu menu = new Menu(name, price, description, store, ownerId);
 		// 객체 필드 조작. Menu 객체 Id 필드 생성. (id를 만드는 생성자가 현실 코드에 따로 없기 때문에 임의로 조작)
@@ -98,7 +103,7 @@ class MenuServiceTest {
 
 		// when & then (Exception에 대한 테스트코인 경우 when과 then이 합쳐지는 상황이 생기기도 한다.)
 		// Assertions.assertThrows(희망예외, 예외를 발생시키는 메서드): 결과값에 대해서 어떤 예외를 던졌는지 확일할 수 있는 메서드
-		Assertions.assertThrows(NotFoundException.class, ()->{
+		Assertions.assertThrows(NotFoundException.class, () -> {
 			menuService.createMenu(storeId, ownerId, name, price, description);
 		});
 	}
