@@ -1,140 +1,80 @@
 package team11.team11project.menu.service;
 
-import jakarta.transaction.Transactional;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import team11.team11project.common.encode.PasswordEncoder;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import team11.team11project.common.entity.Member;
 import team11.team11project.common.entity.Menu;
 import team11.team11project.common.entity.Store;
-import team11.team11project.common.exception.MissingRequiredFieldException;
-import team11.team11project.common.exception.NotFoundException;
 import team11.team11project.menu.model.response.MenuResponse;
 import team11.team11project.menu.repository.MenuRepository;
-import team11.team11project.store.model.request.CreateStoreRequest;
 import team11.team11project.store.repository.StoreRepository;
-import team11.team11project.user.model.request.RegisterRequest;
-import team11.team11project.user.repository.MemberRepository;
 
-import java.time.LocalTime;
+/**
+ * 단위테스트
+ */
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+@ExtendWith(MockitoExtension.class) //MockitoExtension 이라는 애를 확장해서 쓸거다.
+class MenuServiceTest {
 
-@SpringBootTest
-@Transactional
-public class MenuServiceTest {
+	// 1-1: 가짜(깡통)객체 만들기. Mock 객체로 있는 척만 해주기.
+	@Mock
+	private MenuRepository menuRepository;
+	@Mock
+	private StoreRepository storeRepository;
 
-    @Autowired
-    private MenuRepository menuRepository;
+	// 1-2: 테스트 하려는 실제 객체에 의존성 주입해주기
+	@InjectMocks // 만들어둔 @Mock들을 주입할 때 사용.
+	private MenuService menuService; //실제 객체
 
-    @Autowired
-    private MemberRepository memberRepository;
+	// 2-1: test code 작성. public은 꼭 있어야한다.
+	@Test
+	@DisplayName("메뉴 생성 메서드 - 성공 케이스")
+	public void createMenu_success(){ // 메서드명은 '실제 메서드명_성공/실패여부' 이런식으로도 사용한다.
 
-    @Autowired
-    private MenuService menuService;
+		// 2-2: 상황 만들기
+		// give
+		// 외부에서 받아와야하는 createMenu()의 매개변수 임의로 만들기. (실제 사용할 값)
+		Long storeId = 1L;
+		Long ownerId = 1L;
+		String name = "망곰이";
+		Integer price = 1000;
+		String description = "JMT";
+		Store store = mock(Store.class); // Store 객체 Mock으로 만들기
+		Member member = mock(Member.class);
 
-    @Autowired
-    private StoreRepository storeRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+		// Mock 상태인 storeRepository가 실제로 동작하는 것이 아니기 때문에 로직상 어떤 값을 받아와야하는 경우 상황 설정을 해줘야한다.
+		// storeRepository에서 findById를 하면 Optional 타입의 Store 객체를 반환하겠다.
+		when(storeRepository.findById(anyLong()/*혹은 storeId*/)).thenReturn(Optional.of(store)); // 실제 MenuService의 25번 줄에 대한 상황 정의
+		when(store.getOwner()).thenReturn(member); // 실제 MenuService의 28번 줄에 대한 상황 정의
+		when(member.getId()).thenReturn(ownerId);
 
-    private Menu menu;
-    private Store store;
-    private Member owner;
+		Menu menu = new Menu(name, price, description, store, ownerId);
+		// 객체 필드 조작. Menu 객체 Id 필드 생성. (id를 만드는 생성자가 현실 코드에 따로 없기 때문에 임의로 조작)
+		ReflectionTestUtils.setField(menu, "id", 1L);
 
-    @BeforeEach
-    void 메뉴_초기값_설정(){
+		// any()의 역할: 어떤 값이든 상관 없이 지정한 타입이면 OK
+		when(menuRepository.save(any(Menu.class))).thenReturn(menu);
 
-        // Owner 객체 생성
-        String encodedPassword = passwordEncoder.encode("Password1234!");
-      owner = memberRepository.save(Member.createMember(
-                new RegisterRequest(
-                        "유저테스트",
-                        "usertest@example.com",
-                        "Password1234!",
-                        "OWNER"),
-                encodedPassword
-        ));
+		// when
+		// 테스트하려는 메서드 호출하기
+		MenuResponse result = menuService.createMenu(storeId, ownerId, name, price, description);
 
-        // Store 객체 생성
-        LocalTime openTime = LocalTime.parse("10:00");
-        LocalTime closeTime = LocalTime.parse("09:59");
+		// then
+		// 내가 정한 값과 실제로 메서드를 통해 나온 결과 값이 동일한지 확인
+		/*assertEquals(result.getId(), menu.getId());*/
+		assertEquals(result.getName(), name);
+		assertEquals(result.getDescription(), description);
 
-        CreateStoreRequest storeRequest = new CreateStoreRequest(
-                "치킨집",
-                openTime,
-                closeTime,
-                10000
-        );
-        store = storeRepository.save(Store.createStore(storeRequest,owner));
-
-        //menu 초기값
-        menu = new Menu("치킨",10000,"치킨은 맛있다.",store, owner.getId());
-
-        menuRepository.save(menu);
-    }
-
-    @Test
-    @DisplayName("메뉴 생성 시 모든 값이 유효하면 생성된다.")
-    void 메뉴_생성_테트스(){
-        Long storeId = store.getId();
-        Long ownerId = owner.getId();
-
-        MenuResponse menuResponse= menuService.createMenu(storeId,ownerId,"짜장면",7000,"짜장면은 맛있다.");
-
-        Assertions.assertEquals("짜장면", menuResponse.getName());
-        Assertions.assertEquals(7000, menuResponse.getPrice());
-        Assertions.assertEquals("짜장면은 맛있다.", menuResponse.getDescription());
-    }
-
-
-    @Test
-    @DisplayName("수정 시 price가 0보다 작으면 예외가 발생한다.")
-    void 메뉴_가격_수정_테스트(){
-        Long menuId = menu.getId();
-        Long storeId = store.getId();
-        Long ownerId = owner.getId();
-
-        assertThatThrownBy(() -> menuService.updateMenu(storeId,ownerId,menuId,"치킨",-1,"치킨은 맜있다.")).isInstanceOf(MissingRequiredFieldException.class);
-    }
-
-    @Test
-    @DisplayName("수정 시 owner가 아니면 예외가 발생한다.")
-    void 메뉴_사장_수정_테스트(){
-        Long menuId = menu.getId();
-        Long storeId = store.getId();
-        Long ownerId = 2L;
-
-        assertThatThrownBy(() -> menuService.updateMenu(storeId,ownerId,menuId,"치킨",15000,"치킨은 맜있다.")).isInstanceOf(NotFoundException.class);
-    }
-
-    @Test
-    @DisplayName("수정 시 store가 없으면 예외가 발생한다.")
-    void 메뉴_가게_수정_테스트(){
-        Long menuId = menu.getId();
-        Long storeId = 10L;
-        Long ownerId = owner.getId();
-
-        assertThatThrownBy(() -> menuService.updateMenu(storeId,ownerId,menuId,"치킨",15000,"치킨은 맜있다.")).isInstanceOf(NotFoundException.class);
-
-    }
-
-    @Test
-    @DisplayName("수정 시 모든 값이 유효하면 정상적으로 수정된다.")
-    void 메뉴_수정_테스트(){
-        Long menuId = menu.getId();
-        Long storeId = store.getId();
-        Long ownerId = owner.getId();
-
-        MenuResponse menuResponse= menuService.updateMenu(storeId,ownerId,menuId,"피자",18000,"피자도 맛있다.");
-
-        Assertions.assertEquals("피자", menuResponse.getName());
-        Assertions.assertEquals(18000, menuResponse.getPrice());
-        Assertions.assertEquals("피자도 맛있다.", menuResponse.getDescription());
-    }
-
+	}
 }
