@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.Optional;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import team11.team11project.common.entity.Member;
 import team11.team11project.common.entity.Menu;
 import team11.team11project.common.entity.Store;
+import team11.team11project.common.exception.NotFoundException;
 import team11.team11project.menu.model.response.MenuResponse;
 import team11.team11project.menu.repository.MenuRepository;
 import team11.team11project.store.repository.StoreRepository;
@@ -57,7 +59,7 @@ class MenuServiceTest {
 		// storeRepository에서 findById를 하면 Optional 타입의 Store 객체를 반환하겠다.
 		when(storeRepository.findById(anyLong()/*혹은 storeId*/)).thenReturn(Optional.of(store)); // 실제 MenuService의 25번 줄에 대한 상황 정의
 		when(store.getOwner()).thenReturn(member); // 실제 MenuService의 28번 줄에 대한 상황 정의
-		when(member.getId()).thenReturn(ownerId);
+		when(member.getId()).thenReturn(ownerId); // Member도 결국 가짜 객체이기 때문에, getId()를 했을 때 어떤 값을 반환할 것인지 설정해줘야한다.
 
 		Menu menu = new Menu(name, price, description, store, ownerId);
 		// 객체 필드 조작. Menu 객체 Id 필드 생성. (id를 만드는 생성자가 현실 코드에 따로 없기 때문에 임의로 조작)
@@ -75,6 +77,29 @@ class MenuServiceTest {
 		/*assertEquals(result.getId(), menu.getId());*/
 		assertEquals(result.getName(), name);
 		assertEquals(result.getDescription(), description);
+	}
 
+	@Test
+	@DisplayName("메뉴 생성 메서드(실패 케이스) - 본인의 가게가 아닌 경우")
+	public void createMenu_fail_case_1() {
+
+		// give
+		Long storeId = 1L;
+		Long ownerId = 1L;
+		String name = "망곰이";
+		Integer price = 1000;
+		String description = "JMT";
+		Store store = mock(Store.class);
+		Member member = mock(Member.class);
+
+		when(storeRepository.findById(anyLong()/*혹은 storeId*/)).thenReturn(Optional.of(store));
+		when(store.getOwner()).thenReturn(member);
+		when(member.getId()).thenReturn(2L); // 시나리오상 memberId랑 ownerId를 다르게 설정
+
+		// when & then (Exception에 대한 테스트코인 경우 when과 then이 합쳐지는 상황이 생기기도 한다.)
+		// Assertions.assertThrows(희망예외, 예외를 발생시키는 메서드): 결과값에 대해서 어떤 예외를 던졌는지 확일할 수 있는 메서드
+		Assertions.assertThrows(NotFoundException.class, ()->{
+			menuService.createMenu(storeId, ownerId, name, price, description);
+		});
 	}
 }
